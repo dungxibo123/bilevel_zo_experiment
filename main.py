@@ -22,7 +22,7 @@ import numpy as np
 from grad_estimator import GradientEstimator
 from main_routine import Algorithm3, HyperObjectiveOracle
 from sub_routine import Algorithm2
-from utils import Array, as_vector, make_box_projection, make_quadratic_problem
+from utils import Array, as_vector, make_box_projection, make_quadratic_problem, make_quadratic_nonconvex_problem
 
 
 # -----------------------------------------------------------------------------
@@ -221,7 +221,7 @@ def make_vector(value: float, dim: int) -> Array:
 
 
 def build_problem(args: argparse.Namespace):
-    return make_quadratic_problem(
+    return make_quadratic_nonconvex_problem(
         dim=args.dim,
         beta=args.beta,
         alpha=args.alpha,

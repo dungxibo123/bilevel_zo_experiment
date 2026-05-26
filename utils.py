@@ -50,6 +50,88 @@ def make_box_projection(
 
     return projection
 
+@dataclass
+class QuadraticNonConvexBilevelProblem:
+    """
+    Smooth nonconvex toy problem for vector-valued x and y.
+
+    Lower-level objective:
+        g(x, y) = 0.5 ||y - x||^2 - 0.5 beta ||y||^2
+
+    Upper-level objective:
+        f(x, y) = 0.5 ||x - x_target||^2 + 0.5 alpha ||y - y_target||^2
+
+    The dimensions of x and y are assumed equal in this toy problem.
+    """
+
+    dim: int
+    beta: float = 1.0
+    alpha: float = 1.0
+    x_target: Optional[Array] = None
+    y_target: Optional[Array] = None
+
+    def __post_init__(self) -> None:
+        if self.dim <= 0:
+            raise ValueError("dim must be positive")
+        if self.beta < 0:
+            raise ValueError("beta must be nonnegative")
+        if self.alpha < 0:
+            raise ValueError("alpha must be nonnegative")
+
+        if self.x_target is None:
+            self.x_target = np.ones(self.dim) * 2.0
+        else:
+            self.x_target = as_vector(self.x_target)
+
+        if self.y_target is None:
+            self.y_target = np.ones(self.dim) * 1.0
+        else:
+            self.y_target = as_vector(self.y_target)
+
+        if self.x_target.shape[0] != self.dim:
+            raise ValueError("x_target dimension mismatch")
+        if self.y_target.shape[0] != self.dim:
+            raise ValueError("y_target dimension mismatch")
+
+    def _check(self, x: Array, y: Array) -> tuple[Array, Array]:
+        x = as_vector(x)
+        y = as_vector(y)
+        if x.shape[0] != self.dim or y.shape[0] != self.dim:
+            raise ValueError(
+                f"Expected x and y to have dimension {self.dim}, got {x.shape[0]} and {y.shape[0]}"
+            )
+        return x, y
+
+    def f(self, x: Array, y: Array) -> float:
+        x, y = self._check(x, y)
+        return float(
+            0.5 * np.linalg.norm(x - self.x_target) ** 2
+            + 0.5 * self.alpha * np.linalg.norm(y - self.y_target) ** 2
+        )
+
+    def g(self, x: Array, y: Array) -> float:
+        x, y = self._check(x, y)
+        return float(
+            0.5 * np.linalg.norm(y - x) ** 2
+            - 0.5 * self.beta * np.linalg.norm(y) ** 2
+        )
+
+    def grad_f_y(self, x: Array, y: Array) -> Array:
+        x, y = self._check(x, y)
+        return self.alpha * (y - self.y_target)
+
+    def grad_g_y(self, x: Array, y: Array) -> Array:
+        x, y = self._check(x, y)
+        return (y - x) - self.beta * y
+
+    def grad_f_x(self, x: Array, y: Array) -> Array:
+        x, y = self._check(x, y)
+        return x - self.x_target
+
+    def lower_solution(self, x: Array) -> Array:
+        """Closed-form lower solution for sanity checks."""
+        x = as_vector(x)
+        return x / (1.0 - self.beta)
 
 @dataclass
 class QuadraticBilevelProblem:
@@ -133,6 +215,22 @@ class QuadraticBilevelProblem:
         """Closed-form lower solution for sanity checks."""
         x = as_vector(x)
         return x / (1.0 + self.beta)
+
+def make_quadratic_nonconvex_problem(
+    dim: int = 3,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    x_target: Optional[Array] = None,
+    y_target: Optional[Array] = None,
+) -> QuadraticBilevelProblem:
+    """Factory for the default smooth convex experiment."""
+    return QuadraticNonConvexBilevelProblem(
+        dim=dim,
+        beta=beta,
+        alpha=alpha,
+        x_target=x_target,
+        y_target=y_target,
+    )
 
 
 def make_quadratic_problem(
