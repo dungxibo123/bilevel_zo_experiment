@@ -221,7 +221,7 @@ def make_vector(value: float, dim: int) -> Array:
 
 
 def build_problem(args: argparse.Namespace):
-    return make_quadratic_nonconvex_problem(
+    return make_quadratic_problem(
         dim=args.dim,
         beta=args.beta,
         alpha=args.alpha,
